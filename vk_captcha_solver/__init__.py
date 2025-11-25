@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
 class CaptchaSolver:
     def __init__(self, api_options: Optional[IApiOptions] = None):
-        self.api = API(api_options)
+        self.api_options = api_options
+        self.api = API(self.api_options)
         self.known_captcha_types = ["slider", "checkbox"]
 
     async def get_captcha_params(self, validation_uri: str) -> tuple[str, str]:
@@ -83,9 +84,13 @@ class CaptchaSolver:
         return response["success_token"]
 
     async def close(self):
+        if self.api is None or self.api.closed:
+            return
         await self.api.close()
 
     async def __aenter__(self):
+        if self.api is None or self.api.closed:
+            self.api = API(self.api_options)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -115,8 +120,9 @@ class CaptchaSolver:
         captcha_uri, remixstlid = await self.get_captcha_params(validation_uri)
 
         try:
-            success_token = await self.solve(captcha_uri)
-            await self.api.validate(validation_uri, success_token, remixstlid)
+            async with self as solver:
+                success_token = await solver.solve(captcha_uri)
+                await self.api.validate(validation_uri, success_token, remixstlid)
         except Exception as e:
             # Log error?
             print(f"Error solving activation in vkbottle handler: {e}")
@@ -130,7 +136,8 @@ class CaptchaSolver:
         redirect_uri = error.redirect_uri
 
         try:
-            return await self.solve(redirect_uri)
+            async with self as solver:
+                return await solver.solve(redirect_uri)
         except Exception as e:
             # Log error?
             print(f"Error solving captcha in vkbottle handler: {e}")

@@ -40,6 +40,10 @@ class API:
         # But since the original class had a persistent session, let's use one.
         self._session: Optional[aiohttp.ClientSession] = None
 
+    @property
+    def closed(self) -> bool:
+        return self._session is None or self._session.closed
+
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
