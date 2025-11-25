@@ -8,7 +8,7 @@ from .api import API
 from .checkbox_solver import CheckboxCaptchaSolver
 from .slider_solver import SliderCaptchaSolver
 from .exceptions import VKCaptchaSolverError, APIError, HTTPError
-from .types import IApiOptions, ICaptchaCheckParams
+from .types import IApiOptions, ICaptchaCheckParams, IDelayOptions
 
 if TYPE_CHECKING:
     try:
@@ -19,17 +19,28 @@ if TYPE_CHECKING:
 
 class CaptchaSolver:
     def __init__(self, api_options: Optional[IApiOptions] = None):
-        self.api_options = api_options
+        self.api_options = api_options or {}
         self.api = API(self.api_options)
         self.known_captcha_types = ["slider", "checkbox"]
+
+        # Extract delay options with defaults
+        delays = self.api_options.get("delays", {})
+        self.delay_between_requests = delays.get("between_requests", 0.5)
+        self.delay_after_solve = delays.get("after_solve", 1.0)
 
     async def get_captcha_params(self, validation_uri: str) -> tuple[str, str]:
         session_token, remixstlid = await self.api.get_session_data(validation_uri)
         captcha_uri = f"https://id.vk.com/not_robot_captcha?domain=vk.com&session_token={session_token}&variant=popup&blank=1&autofocus=1&origin=https%3A%2F%2Fm.vk.com"
         return captcha_uri, remixstlid
 
+    async def _delay(self, seconds: float) -> None:
+        """Helper to add delay between operations."""
+        if seconds > 0:
+            await asyncio.sleep(seconds)
+
     async def solve(self, redirect_uri: str) -> str:
         initial = await self.api.get_initial_params(redirect_uri)
+        await self._delay(self.delay_between_requests)
 
         captcha_type = initial["data"].get("show_captcha_type")
         if captcha_type not in self.known_captcha_types:
@@ -37,6 +48,7 @@ class CaptchaSolver:
             raise VKCaptchaSolverError(f"Unknown captcha type: {captcha_type}")
 
         settings = await self.api.get_settings(initial["data"])
+        await self._delay(self.delay_between_requests)
 
         # Use executor for CPU-bound PoW if difficulty is high, but usually it's fast enough
         # To be truly async, we should offload it.
@@ -59,6 +71,7 @@ class CaptchaSolver:
 
         if captcha_type == "checkbox":
             await self.api.component_done(initial["data"])
+            await self._delay(self.delay_between_requests)
 
             solver = CheckboxCaptchaSolver()
             # Checkbox solver is CPU bound but fast
@@ -67,7 +80,10 @@ class CaptchaSolver:
             check_params.update(params)  # type: ignore
         else:
             content = await self.api.get_content(initial["data"])
+            await self._delay(self.delay_between_requests)
+
             await self.api.component_done(initial["data"])
+            await self._delay(self.delay_between_requests)
 
             slider_solver = SliderCaptchaSolver()
             # Image processing is CPU bound
@@ -79,7 +95,10 @@ class CaptchaSolver:
             check_params["answer"] = answer_b64
 
         response = await self.api.check(check_params)
+        await self._delay(self.delay_between_requests)
+
         await self.api.end_session(initial["data"])
+        await self._delay(self.delay_after_solve)
 
         return response["success_token"]
 
@@ -145,4 +164,11 @@ class CaptchaSolver:
             raise e
 
 
-__all__ = ["CaptchaSolver", "VKCaptchaSolverError", "APIError", "HTTPError"]
+__all__ = [
+    "CaptchaSolver",
+    "VKCaptchaSolverError",
+    "APIError",
+    "HTTPError",
+    "IApiOptions",
+    "IDelayOptions",
+]
