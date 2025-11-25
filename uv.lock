@@ -2864,7 +2864,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "vkbottle", editable = "../vkbottle" },
+    { name = "vkbottle", git = "https://github.com/50Bytes-dev/vkbottle.git?rev=7fe6c1e3c32f82e53070e0b605a9705db1540fcb" },
 ]
 
 [package.metadata.requires-dev]
@@ -2873,7 +2873,7 @@ dev = [{ name = "notebook", specifier = ">=7.5.0" }]
 [[package]]
 name = "vkbottle"
 version = "5.0.0"
-source = { editable = "../vkbottle" }
+source = { git = "https://github.com/50Bytes-dev/vkbottle.git?rev=7fe6c1e3c32f82e53070e0b605a9705db1540fcb#7fe6c1e3c32f82e53070e0b605a9705db1540fcb" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
@@ -2885,22 +2885,10 @@ dependencies = [
     { name = "vkbottle-types" },
 ]
 
-[package.metadata]
-requires-dist = [
-    { name = "aiofiles", specifier = "==23.1.0" },
-    { name = "aiohttp", specifier = ">=3.8.1,<4.0.0" },
-    { name = "choicelib", specifier = ">=0.1.5,<0.2.0" },
-    { name = "colorama", specifier = ">=0.4.6,<0.5.0" },
-    { name = "pydantic", specifier = ">=2.5.3,<3.0.0" },
-    { name = "typing-extensions", specifier = ">=4.4.0,<5.0.0" },
-    { name = "vbml", specifier = ">=1.1.post1,<2.0" },
-    { name = "vkbottle-types", git = "https://github.com/50Bytes-dev/types.git?rev=bfe40c3f9f5f7778412bea29df546a02e45195cc#bfe40c3f9f5f7778412bea29df546a02e45195cc" },
-]
-
 [[package]]
 name = "vkbottle-types"
 version = "5.199.93.4.post1"
-source = { git = "https://github.com/50Bytes-dev/types.git?rev=bfe40c3f9f5f7778412bea29df546a02e45195cc#bfe40c3f9f5f7778412bea29df546a02e45195cc" }
+source = { git = "https://github.com/50Bytes-dev/types.git?rev=66a03354ed7a4dcaea8098b08d941812abc78089#66a03354ed7a4dcaea8098b08d941812abc78089" }
 dependencies = [
     { name = "msgspec" },
     { name = "pydantic" },
