@@ -1,0 +1,22 @@
+[project]
+name = "vk-captcha-solver-py"
+version = "0.1.0"
+description = "VK Captcha Solver ported to Python"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.31.0",
+    "pillow>=10.0.0",
+    "numpy>=1.26.0",
+    "aiohttp>=3.13.2",
+    "vkbottle",
+]
+
+[tool.uv.sources]
+vkbottle = { path = "../vkbottle", editable = true }
+
+[dependency-groups]
+dev = [
+    "notebook>=7.5.0",
+]
+# vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "49e628bd731b070f5b592059016a31ce3a67a35e" }
