@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "bdc00ebb3bc885d89356a9dbcdeba9ad3df9382b" }
+vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "15fb5c8af321f1b6b05a507fb16de005ac064df7" }
 
 [dependency-groups]
 dev = ["notebook>=7.5.0"]
