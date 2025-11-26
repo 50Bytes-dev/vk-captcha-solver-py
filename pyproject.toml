@@ -10,10 +10,11 @@ dependencies = [
     "numpy>=1.26.0",
     "aiohttp>=3.13.2",
     "vkbottle",
+    "aiohttp-socks>=0.10.2",
 ]
 
 [tool.uv.sources]
-vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "7fe6c1e3c32f82e53070e0b605a9705db1540fcb" }
+vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "2013004f39b943a38ada6b854d18ad1355c7e34a" }
 
 [dependency-groups]
-dev = ["notebook>=7.5.0"]
+dev = ["beautifulsoup4>=4.14.2", "httpx>=0.28.1", "notebook>=7.5.0"]

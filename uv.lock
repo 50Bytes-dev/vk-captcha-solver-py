@@ -161,6 +161,19 @@ wheels = [
 ]
 
 [[package]]
+name = "aiohttp-socks"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "python-socks", extra = ["asyncio"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/07/1598f292433bcdceb069515811ba5221034f4f12535d06c3372a1b71a785/aiohttp_socks-0.10.2.tar.gz", hash = "sha256:942d7c86e2e579418fc7a734610dd97daaf00707c7462f6ccf679b2325767930", size = 11307 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/51/906d2ef2e9dfe2f3e76e53696f2d73c508f99b54c05d7e9acd8e7033d505/aiohttp_socks-0.10.2-py3-none-any.whl", hash = "sha256:84b29d14356bcda4affa03ef267108416390e1c9029922c66be18ef4b106f980", size = 10470 },
+]
+
+[[package]]
 name = "aiosignal"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2194,6 +2207,20 @@ wheels = [
 ]
 
 [[package]]
+name = "python-socks"
+version = "2.7.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/13/24c319ca6a19852d50850893a09e44c72d0f8eee38e62c55d2ee10e9149e/python_socks-2.7.3.tar.gz", hash = "sha256:06f4ae34c5828c96f631872e102425bbf44ad841d65ce68329e8dc1af428c1f1", size = 273160 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/ab/b1bb545bcbb72d4e65662988c79ff6d4601c43424439030cb62027f45540/python_socks-2.7.3-py3-none-any.whl", hash = "sha256:e0fda261fa8d08bbcbb7852cdf5e7f576f15d5e55559f6bc16db1bad8bad399b", size = 55076 },
+]
+
+[package.optional-dependencies]
+asyncio = [
+    { name = "async-timeout", marker = "python_full_version < '3.11'" },
+]
+
+[[package]]
 name = "pywin32"
 version = "311"
 source = { registry = "https://pypi.org/simple" }
@@ -2847,6 +2874,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "aiohttp-socks" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "requests" },
@@ -2855,25 +2883,32 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "beautifulsoup4" },
+    { name = "httpx" },
     { name = "notebook" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.2" },
+    { name = "aiohttp-socks", specifier = ">=0.10.2" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "vkbottle", git = "https://github.com/50Bytes-dev/vkbottle.git?rev=7fe6c1e3c32f82e53070e0b605a9705db1540fcb" },
+    { name = "vkbottle", git = "https://github.com/50Bytes-dev/vkbottle.git?rev=2013004f39b943a38ada6b854d18ad1355c7e34a" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "notebook", specifier = ">=7.5.0" }]
+dev = [
+    { name = "beautifulsoup4", specifier = ">=4.14.2" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "notebook", specifier = ">=7.5.0" },
+]
 
 [[package]]
 name = "vkbottle"
 version = "5.0.0"
-source = { git = "https://github.com/50Bytes-dev/vkbottle.git?rev=7fe6c1e3c32f82e53070e0b605a9705db1540fcb#7fe6c1e3c32f82e53070e0b605a9705db1540fcb" }
+source = { git = "https://github.com/50Bytes-dev/vkbottle.git?rev=2013004f39b943a38ada6b854d18ad1355c7e34a#2013004f39b943a38ada6b854d18ad1355c7e34a" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },

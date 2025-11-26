@@ -1,19 +1,11 @@
 from typing import TypedDict, List, Optional, Union, Dict, Any, Literal
 
 
-class IDelayOptions(TypedDict, total=False):
-    """Delay options in seconds to avoid rate limiting."""
-
-    between_requests: float  # Delay between API requests (default: 0.5)
-    after_solve: float  # Delay after solving a captcha (default: 1.0)
-
-
 class IApiOptions(TypedDict, total=False):
     version: str
     baseUrl: str
     headers: Dict[str, str]
     cookies: Dict[str, str]
-    delays: IDelayOptions
 
 
 class IApiError(TypedDict, total=False):

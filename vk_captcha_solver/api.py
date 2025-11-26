@@ -1,3 +1,4 @@
+from http.cookies import SimpleCookie
 import re
 import json
 import aiohttp
@@ -24,6 +25,7 @@ class API:
         self.base_url = options.get("baseUrl", "https://api.vk.ru")
         self.headers = options.get("headers", {})
         self.cookies = options.get("cookies", {})
+        self.proxy = options.get("proxy")
         self.cookies.update(
             {
                 "remixmdevice": "1440/900/2/!!-!!!!!!!!/158",
@@ -57,10 +59,10 @@ class API:
             await self._session.close()
             self._session = None
 
-    async def get_session_data(self, url: str) -> tuple[str, str]:
+    async def get_session_data(self, url: str) -> tuple[str, SimpleCookie]:
         session = await self._get_session()
         try:
-            async with session.get(url) as response:
+            async with session.get(url, proxy=self.proxy) as response:
                 response.raise_for_status()
                 html = await response.text()
         except aiohttp.ClientResponseError as e:
@@ -75,15 +77,14 @@ class API:
             )
 
         session_token = session_token_match.group(1)
-        remixstlid = response.cookies.get("remixstlid").value
 
-        return session_token, remixstlid
+        return session_token, response.cookies
 
     async def get_initial_params(self, url: str) -> ICaptchaInitialParams:
         """Gets the captcha page (iframe) and parses parameters."""
         session = await self._get_session()
         try:
-            async with session.get(url) as response:
+            async with session.get(url, proxy=self.proxy) as response:
                 response.raise_for_status()
                 html = await response.text()
         except aiohttp.ClientResponseError as e:
@@ -209,7 +210,9 @@ class API:
         session = await self._get_session()
 
         try:
-            async with session.post(url, data=serialized_params) as response:
+            async with session.post(
+                url, data=serialized_params, proxy=self.proxy
+            ) as response:
                 response.raise_for_status()
                 data = await response.json()
         except aiohttp.ClientResponseError as e:
@@ -238,15 +241,17 @@ class API:
         # If neither error nor response?
         return data
 
-    async def validate(self, url: str, success_token: str, remixstlid: str) -> None:
+    async def validate(
+        self,
+        url: str,
+        success_token: str,
+        cookies: SimpleCookie,
+    ) -> None:
         async with self._session.post(
             url,
-            cookies={
-                "remixstlid": remixstlid,
-            },
-            data={
-                "success_token": success_token,
-            },
+            cookies=cookies,
+            data={"success_token": success_token},
+            proxy=self.proxy,
         ) as response:
             try:
                 response.raise_for_status()
