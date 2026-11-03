@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 from .types import (
     IApiOptions,
+    IFakeBrowserEnvironment,
     ICaptchaInitialParams,
     ICaptchaInitialParamsResponse,
     ICaptchaSettings,
@@ -139,11 +140,39 @@ class API:
         if not initial_params:
             raise VKCaptchaSolverError("Invalid window.init data")
 
+        script_url_match = re.search(r"src=(\"|')((.)+not_robot_captcha\.js)", html)
+        if not script_url_match:
+            raise VKCaptchaSolverError(
+                "Missing required value: captcha script url not found in page content."
+            )
+        captcha_script_url = urljoin(str(response.url), script_url_match.group(2))
+
         return {
+            "captchaScriptUrl": captcha_script_url,
             "data": initial_params["data"],
             "difficulty": difficulty,
             "powInput": pow_input,
         }
+
+    async def get_debug_info_value(self, captcha_script_url: str) -> str:
+        """Gets `debug_info` value from the captcha script."""
+        session = await self._get_session()
+        try:
+            async with session.get(captcha_script_url, proxy=self.proxy) as response:
+                response.raise_for_status()
+                script = await response.text()
+        except aiohttp.ClientResponseError as e:
+            raise HTTPError(e.status, e.message, captcha_script_url) from e
+        except Exception as e:
+            raise VKCaptchaSolverError(f"Failed to fetch captcha script: {e}") from e
+
+        # example: debug_info:"721312d314dbdb3e2849b970716a1d2c7ba15960fcc2848f6645da2ec999c222"
+        match = re.search(r"debug_info\s*:\s*[\"']([^\"']*)[\"']", script)
+        if not match or not match.group(1):
+            raise VKCaptchaSolverError(
+                "Missing required value: debug_info not found in script content."
+            )
+        return match.group(1)
 
     async def get_settings(self, params: Dict[str, str]) -> ICaptchaSettings:
         """Gets captcha settings."""
@@ -175,11 +204,17 @@ class API:
             },
         )
 
-    async def component_done(self, params: Dict[str, str]) -> None:
+    async def component_done(
+        self, params: Dict[str, Any], device: IFakeBrowserEnvironment
+    ) -> None:
         """Sends "Component ready/loaded" event."""
         await self.call(
             "captchaNotRobot.componentDone",
-            {"session_token": params["session_token"], "domain": params["domain"]},
+            {
+                "session_token": params["session_token"],
+                "domain": params["domain"],
+                "device": device,
+            },
         )
 
     async def check(self, params: ICaptchaCheckParams) -> ICaptchaCheck:
@@ -202,7 +237,7 @@ class API:
             if value is None:
                 serialized_params[key] = ""
             elif isinstance(value, (list, dict)):
-                serialized_params[key] = json.dumps(value)
+                serialized_params[key] = json.dumps(value, separators=(",", ":"))
             else:
                 serialized_params[key] = str(value)
 

@@ -16,6 +16,7 @@ import hashlib
 import base64
 import json
 import asyncio
+import random
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, TYPE_CHECKING
 
@@ -23,7 +24,13 @@ from .api import API
 from .checkbox_solver import CheckboxCaptchaSolver
 from .slider_solver import SliderCaptchaSolver
 from .exceptions import VKCaptchaSolverError, APIError, HTTPError
-from .types import IApiOptions, ICaptchaCheckParams
+from .types import IApiOptions, ICaptchaCheckParams, IFakeBrowserEnvironment
+from .utils import (
+    generate_fake_desktop_environment,
+    generate_fake_fingerprint_from_environment,
+    get_random_float,
+    get_random_int,
+)
 
 if TYPE_CHECKING:
     try:
@@ -95,6 +102,7 @@ class CaptchaSolver:
             )
 
         initial = await self._api.get_initial_params(redirect_uri)
+        debug_info = await self._api.get_debug_info_value(initial["captchaScriptUrl"])
 
         captcha_type = initial["data"].get("show_captcha_type")
         if captcha_type not in ("slider", "checkbox"):
@@ -108,13 +116,16 @@ class CaptchaSolver:
             None, self._generate_pow, initial["powInput"], initial["difficulty"]
         )
 
-        check_params = self._build_check_params(initial, pow_hash)
+        device = generate_fake_desktop_environment()
+        check_params = self._build_check_params(initial, pow_hash, debug_info, device)
 
         if captcha_type == "checkbox":
-            check_params = await self._solve_checkbox(initial, settings, check_params)
+            check_params = await self._solve_checkbox(
+                initial, settings, check_params, device
+            )
         else:
             check_params = await self._solve_slider(
-                initial, settings, check_params, loop
+                initial, settings, check_params, device, loop
             )
 
         response = await self._api.check(check_params)
@@ -195,8 +206,17 @@ class CaptchaSolver:
             await self._api.close()
         self._api = None
 
-    def _build_check_params(self, initial: dict, pow_hash: str) -> ICaptchaCheckParams:
+    def _build_check_params(
+        self,
+        initial: dict,
+        pow_hash: str,
+        debug_info: str,
+        device: IFakeBrowserEnvironment,
+    ) -> ICaptchaCheckParams:
         """Формирует базовые параметры для проверки капчи."""
+        rtt = get_random_int(40, 60)
+        downlink = get_random_float(3, 10)
+
         return {
             "domain": initial["data"]["domain"],
             "session_token": initial["data"]["session_token"],
@@ -207,16 +227,32 @@ class CaptchaSolver:
             "gyroscope": [],
             "motion": [],
             "taps": [],
+            "connectionRtt": (
+                [] if random.random() >= 0.5 else [rtt] * get_random_int(5, 10)
+            ),
+            "connectionDownlink": [downlink] * get_random_int(5, 10),
+            "debug_info": debug_info,
+            "browser_fp": generate_fake_fingerprint_from_environment(device),
         }
 
     async def _solve_checkbox(
-        self, initial: dict, settings: dict, check_params: ICaptchaCheckParams
+        self,
+        initial: dict,
+        settings: dict,
+        check_params: ICaptchaCheckParams,
+        device: IFakeBrowserEnvironment,
     ) -> ICaptchaCheckParams:
         """Решает checkbox-капчу."""
-        await self._api.component_done(initial["data"])
+        await self._api.component_done(initial["data"], device)
 
         solver = CheckboxCaptchaSolver()
-        params = solver.solve(settings.get("bridge_sensors_list", []))
+        mouse_trace_params = {}
+        sensors_delay = settings.get("sensors_delay")
+        if sensors_delay:
+            mouse_trace_params["intervalMs"] = sensors_delay
+        params = solver.solve(
+            settings.get("bridge_sensors_list", []), mouse_trace_params  # type: ignore
+        )
         check_params.update(params)  # type: ignore
 
         return check_params
@@ -226,12 +262,13 @@ class CaptchaSolver:
         initial: dict,
         settings: dict,
         check_params: ICaptchaCheckParams,
+        device: IFakeBrowserEnvironment,
         loop: asyncio.AbstractEventLoop,
     ) -> ICaptchaCheckParams:
         """Решает slider-капчу."""
         content = await self._api.get_content(initial["data"])
 
-        await self._api.component_done(initial["data"])
+        await self._api.component_done(initial["data"], device)
 
         solver = SliderCaptchaSolver()
         params = await loop.run_in_executor(None, solver.solve, content)

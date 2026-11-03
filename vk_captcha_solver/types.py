@@ -60,6 +60,7 @@ class ICaptchaInitialParamsResponse(TypedDict):
 class ICaptchaInitialParams(ICaptchaInitialParamsResponse):
     difficulty: int
     powInput: str
+    captchaScriptUrl: str
 
 
 class ICaptchaSettings(ICaptchaBaseResponse):
@@ -92,6 +93,11 @@ class ICaptchaCheckParams(TypedDict, total=False):
     motion: List[ICaptchaSensorData]
     cursor: List[ICaptchaSensorData]
     taps: List[ICaptchaSensorData]
+    # Device / connection data
+    debug_info: str
+    connectionDownlink: List[float]
+    connectionRtt: List[int]
+    browser_fp: str
 
 
 class ICaptchaCheck(ICaptchaBaseResponse):
@@ -122,3 +128,20 @@ class IGridLines(TypedDict):
 class ITileInfo(TypedDict):
     tiles: List[ITile]
     grid: IGridLines
+
+
+class IFakeBrowserEnvironment(TypedDict):
+    screenWidth: int
+    screenHeight: int
+    screenAvailWidth: int
+    screenAvailHeight: int
+    innerWidth: int
+    innerHeight: int
+    devicePixelRatio: float
+    language: str
+    languages: List[str]
+    webdriver: bool
+    hardwareConcurrency: int
+    deviceMemory: int
+    connectionEffectiveType: str
+    notificationsPermission: str

@@ -3,7 +3,7 @@ import random
 from typing import Dict, List, Optional
 
 from .types import IMouseTraceParams, ICaptchaSensorData
-from .utils import get_random_number
+from .utils import get_random_int
 
 
 class CheckboxCaptchaSolver:
@@ -40,18 +40,18 @@ class CheckboxCaptchaSolver:
         from_pos = params.get("from_")
         to_pos = params.get("to")
         interval_ms = params.get("intervalMs", 500)
-        duration_ms = params.get("durationMs", get_random_number(2000, 15000))
+        duration_ms = params.get("durationMs", get_random_int(2_000, 10_000))
 
         if from_pos is None:
             from_pos = {
-                "x": get_random_number(1080 // 2, 1080),
-                "y": get_random_number(720 // 2, 720),
+                "x": get_random_int(1080 // 2, 1080),
+                "y": get_random_int(720 // 2, 720),
             }
 
         if to_pos is None:
             to_pos = {
-                "x": get_random_number(from_pos["x"] - 300, from_pos["x"] + 300),
-                "y": get_random_number(from_pos["y"] - 300, from_pos["y"] + 300),
+                "x": get_random_int(from_pos["x"] - 300, from_pos["x"] + 300),
+                "y": get_random_int(from_pos["y"] - 300, from_pos["y"] + 300),
             }
 
         total_steps = math.floor(duration_ms / interval_ms)

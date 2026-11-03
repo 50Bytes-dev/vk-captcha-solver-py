@@ -24,6 +24,14 @@ vk_api.add_validation_handler(solver.vkbottle_validation_handler)
 
 
 async def main():
+    me_info = await vk_api.users.get()
+    if me_info and len(me_info) > 0:
+        me_data = me_info[0]
+        print(f"INFO    | me_info > {me_data.first_name} {me_data.last_name}")
+    else:
+        print("INFO    | me_info > not found")
+        return
+
     for GROUP_ID in GROUP_IDS.split(","):
         try:
             group_info = await vk_api.groups.get_by_id(
