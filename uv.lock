@@ -2896,7 +2896,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "vkbottle", git = "https://github.com/50Bytes-dev/vkbottle.git?rev=ae417d75b3a089d4ad69c1860eeb0ffcee0f6888" },
+    { name = "vkbottle", git = "https://github.com/50Bytes-dev/vkbottle.git?rev=93d4e7f00f105eb8a3a92466060a49e7f504de36" },
 ]
 
 [package.metadata.requires-dev]
@@ -2909,7 +2909,7 @@ dev = [
 [[package]]
 name = "vkbottle"
 version = "5.0.0"
-source = { git = "https://github.com/50Bytes-dev/vkbottle.git?rev=ae417d75b3a089d4ad69c1860eeb0ffcee0f6888#ae417d75b3a089d4ad69c1860eeb0ffcee0f6888" }
+source = { git = "https://github.com/50Bytes-dev/vkbottle.git?rev=93d4e7f00f105eb8a3a92466060a49e7f504de36#93d4e7f00f105eb8a3a92466060a49e7f504de36" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
@@ -2924,7 +2924,7 @@ dependencies = [
 [[package]]
 name = "vkbottle-types"
 version = "5.199.93.4.post1"
-source = { git = "https://github.com/50Bytes-dev/types.git?rev=721dca3eda4cb9eb313e18848b4c7095bde4e1ed#721dca3eda4cb9eb313e18848b4c7095bde4e1ed" }
+source = { git = "https://github.com/50Bytes-dev/types.git?rev=a71624b5b4bf3afb91263cf37a02396862098f98#a71624b5b4bf3afb91263cf37a02396862098f98" }
 dependencies = [
     { name = "msgspec" },
     { name = "pydantic" },

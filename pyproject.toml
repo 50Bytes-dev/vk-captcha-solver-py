@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "ae417d75b3a089d4ad69c1860eeb0ffcee0f6888" }
+vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "93d4e7f00f105eb8a3a92466060a49e7f504de36" }
 
 [dependency-groups]
 dev = ["beautifulsoup4>=4.14.2", "httpx>=0.28.1", "notebook>=7.5.0"]
