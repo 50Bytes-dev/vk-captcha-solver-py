@@ -5,7 +5,9 @@ Solves the VK ID captcha ("Я не робот"):
 - the captcha page VK links in `redirect_uri` of API error 14;
 - the validation page of error 17 (`m.vk.com/activation?act=validate…`): the
   solver opens it as m.vk.com's own page asks for it, solves the captcha
-  behind it and posts the `success_token` to the page's form.
+  behind it, posts the `success_token` to the page's form as that page's
+  script does (an XHR) and checks that VK confirmed the validation. Checked
+  live on 2026-11-16: the call that met error 17 went through afterwards.
 
 Both kinds of captcha page are read:
 

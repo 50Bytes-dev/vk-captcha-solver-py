@@ -587,22 +587,37 @@ class Session:
         return captcha_url, action_url, final
 
     async def validate(self, action_url: str, page_url: str, success_token: str) -> None:
-        """Post the success_token to the validation page's form, as a browser
-        submits the form of that page."""
+        """Post the success_token to the validation page's form as m.vk.com's
+        SPA posts a form: an XHR with _ajax=1. A plain form submit answers the
+        SPA's shell and validates nothing; the XHR answers JSON whose location
+        is https://oauth.vk.com/blank.html#success=1, and the call that met
+        error 17 then goes through (both checked live, 2026-11-16). An answer
+        that names no location is VK's change (page_changed); a location
+        without success=1 is a validation VK did not take (failed). Either
+        carries the answer in .body."""
         op = "validate"
         h = self._headers()
         h["Content-Type"] = "application/x-www-form-urlencoded"
-        h["Accept"] = _NAV_ACCEPT
+        h["Accept"] = "*/*"
+        h["X-Requested-With"] = "XMLHttpRequest"
         h["Origin"] = _origin(page_url)
         h["Referer"] = page_url
-        h["Sec-Fetch-Dest"] = "document"
-        h["Sec-Fetch-Mode"] = "navigate"
+        h["Sec-Fetch-Dest"] = "empty"
+        h["Sec-Fetch-Mode"] = "cors"
         h["Sec-Fetch-Site"] = "same-origin" if _origin(action_url) == _origin(page_url) else "same-site"
-        h["Sec-Fetch-User"] = "?1"
-        h["Upgrade-Insecure-Requests"] = "1"
-        h["Cache-Control"] = "max-age=0"
-        body = "success_token=" + query_escape(success_token)
-        await self._do(op, "POST", action_url, h, data=body.encode("ascii"))
+        body = "success_token=" + query_escape(success_token) + "&_ajax=1"
+        raw, final, charset = await self._do(op, "POST", action_url, h, data=body.encode("ascii"))
+        text = _decode(raw, charset)
+        try:
+            doc = json.loads(text)
+        except ValueError:
+            doc = None
+        location = doc.get("location") if isinstance(doc, dict) else None
+        if not isinstance(location, str) or not location:
+            raise page_error(op + ": the answer names no location", final, text)
+        if "success=1" not in location:
+            raise VKCaptchaSolverError(op=op + ": VK did not confirm the validation", url=final, body=text)
+        log.debug("%s: VK confirmed the validation", op)
 
 
 def read_bff_page(page_url: str, page: str) -> InitialParams:

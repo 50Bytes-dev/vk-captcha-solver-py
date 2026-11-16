@@ -37,15 +37,26 @@ def xhr_html(token: str = "VALIDATION-TOKEN", action: str = "/activation?act=cap
 
 
 SPA_SHELL = '<!DOCTYPE html><html><body><script>window.init({"module":"activation"});</script></body></html>'
+# What m.vk.com answers to the form posted as its SPA posts it (live, 2026-11-16).
+VALIDATED = '{"location":"https:\\/\\/oauth.vk.com\\/blank.html#success=1","hard":0,"frame":0,"type":1,"notifications":[]}'
+JSON_TYPE = ("Content-Type", "application/json; charset=utf-8")
+
+
+def post_reply(call: FakeCall) -> Reply:
+    """A form posted as a plain submit gets the SPA's shell and validates
+    nothing; the SPA's own XHR is answered."""
+    if call.headers.get("X-Requested-With") != "XMLHttpRequest" or call.f("_ajax") != "1":
+        return Reply(body=SPA_SHELL, headers=[("Content-Type", "text/html")])
+    return Reply(body=VALIDATED, headers=[JSON_TYPE])
 
 
 def activation_reply(call: FakeCall) -> Reply:
     if call.http_method == "POST":
-        return Reply(body="<html>ok</html>", headers=[("Content-Type", "text/html")])
+        return post_reply(call)
     if call.headers.get("X-Requested-With") != "XMLHttpRequest":
         return Reply(body=SPA_SHELL, headers=[STL])  # what a plain load gets now
     doc = {"title": "Подтверждение", "html": xhr_html(), "js": "", "statsMeta": {}, "static_files": [], "env": {}}
-    return Reply(body=json.dumps(doc, ensure_ascii=False), headers=[STL, ("Content-Type", "application/json; charset=utf-8")])
+    return Reply(body=json.dumps(doc, ensure_ascii=False), headers=[STL, JSON_TYPE])
 
 
 @pytest.fixture
@@ -75,14 +86,15 @@ async def test_validation_xhr_json_page(vfake, make_solver):
     assert page.cookies.get("remixstlid") == "STL"
     check = vfake.call("captchaNotRobot.check")
     assert check.f("session_token") == "VALIDATION-TOKEN" and check.f("debug_info") == TEST_DEBUG_INFO
-    # The success_token goes to the form's action, as the page's form submit.
+    # The success_token goes to the form's action, as the SPA posts a form.
     assert post.http_method == "POST" and post.path == "/activation"
     assert post.q("act") == "captcha" and post.q("api_hash") == "H1" and post.q("hash") == "H2" and post.q("form") == "1"
-    assert post.raw_body == "success_token=SUCCESS-TOKEN"
+    assert post.raw_body == "success_token=SUCCESS-TOKEN&_ajax=1"
+    assert post.headers["X-Requested-With"] == "XMLHttpRequest" and post.headers["Accept"] == "*/*"
     assert post.headers["Content-Type"] == "application/x-www-form-urlencoded"
     assert post.headers["Origin"] == "https://m.vk.com"
     assert post.headers["Referer"] == "https://m.vk.com/activation?act=captcha&api_hash=H1&hash=H2"
-    assert post.headers["Sec-Fetch-Mode"] == "navigate" and post.headers["Sec-Fetch-Site"] == "same-origin"
+    assert post.headers["Sec-Fetch-Mode"] == "cors" and post.headers["Sec-Fetch-Site"] == "same-origin"
     assert post.cookies.get("remixstlid") == "STL"
     assert report.bff and report.kind == "checkbox"
 
@@ -91,8 +103,8 @@ async def test_validation_old_server_rendered_page(make_solver):
     """The old page: the form itself, no iframeSrc; the captcha address is
     built from its session_token and the token goes to the validation page."""
     f = new_bff_fake("checkbox")
-    f.set(ACTIVATION, '<html><script>var u = "/x?session_token=VALIDATION-TOKEN&act=1";</script></html>')
-    f.headers[ACTIVATION] = [STL]
+    old_page = '<html><script>var u = "/x?session_token=VALIDATION-TOKEN&act=1";</script></html>'
+    f.hooks[ACTIVATION] = lambda call: post_reply(call) if call.http_method == "POST" else Reply(body=old_page, headers=[STL])
     await f.start(server_context())
     try:
         await make_solver(f).solve_validation(VALIDATE)
@@ -101,7 +113,7 @@ async def test_validation_old_server_rendered_page(make_solver):
         assert page.cookies.get("remixstlid") == "STL"
         assert post.http_method == "POST" and post.key() == ACTIVATION
         assert post.q("act") == "captcha" and post.q("hash") == "H2" and post.q("form") is None
-        assert parse_qs(post.raw_body) == {"success_token": ["SUCCESS-TOKEN"]}
+        assert parse_qs(post.raw_body) == {"success_token": ["SUCCESS-TOKEN"], "_ajax": ["1"]}
         assert post.cookies.get("remixstlid") == "STL"
     finally:
         await f.close()
@@ -120,6 +132,33 @@ async def test_validation_page_without_captcha_address(make_solver):
         assert e.url == "https://m.vk.com/activation?act=captcha&api_hash=H1&hash=H2" and e.body == SPA_SHELL
         assert f.call_keys() == [ACTIVATION]
         assert e.report is not None and e.report.failure == FAILURE_PAGE_CHANGED
+    finally:
+        await f.close()
+
+
+@pytest.mark.parametrize(
+    "answer, kind, text",
+    [
+        # the SPA's shell: what a form that validated nothing gets
+        (SPA_SHELL, FAILURE_PAGE_CHANGED, "validate: the answer names no location"),
+        ('{"html":"<div></div>"}', FAILURE_PAGE_CHANGED, "validate: the answer names no location"),
+        ('{"location":"https:\\/\\/oauth.vk.com\\/blank.html#fail=1"}', "failed", "validate: VK did not confirm the validation"),
+    ],
+    ids=["shell", "no-location", "not-success"],
+)
+async def test_validation_not_confirmed(make_solver, answer, kind, text):
+    """The captcha was solved, but VK's answer to the form does not say the
+    validation passed: an error with the answer kept, not a silent success."""
+    f = new_bff_fake("checkbox")
+    f.hooks[ACTIVATION] = lambda call: Reply(body=answer) if call.http_method == "POST" else activation_reply(call)
+    await f.start(server_context())
+    try:
+        with pytest.raises(VKCaptchaSolverError) as ei:
+            await make_solver(f).solve_validation(VALIDATE)
+        e = ei.value
+        assert failure_kind(e) == kind and str(e) == text
+        assert e.body == answer and e.url.startswith("https://m.vk.com/activation?")
+        assert f.calls[-1].http_method == "POST" and f.call("captchaNotRobot.check")
     finally:
         await f.close()
 
