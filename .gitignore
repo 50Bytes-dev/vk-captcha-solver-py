@@ -4,3 +4,7 @@ __pycache__
 .DS_Store
 notebooks
 .env
+*.egg-info/
+build/
+dist/
+.pytest_cache/

@@ -1,11 +1,51 @@
-import io
 import base64
+import binascii
+import io
 import math
-from typing import List, Tuple, Dict, Any
-from PIL import Image
-import numpy as np
+from typing import Any, Dict, List, Tuple
 
-from .types import ICaptchaContent, ITileInfo, ITile
+import numpy as np
+from PIL import Image
+
+from .exceptions import VKCaptchaSolverError
+from .jsontree import go_round
+from .types import ICaptchaContent, ITile, ITileInfo
+
+# The picture is bounded before it is decoded.
+MAX_SLIDER_PIXELS = 4096 * 4096
+
+
+def decode_picture(b64: str) -> Image.Image:
+    """A base64 jpeg or png as RGB. Alpha is dropped, not blended. A bad
+    picture is an error, not a crash."""
+    b64 = "".join(str(b64).split())
+    try:
+        data = base64.b64decode(b64, validate=True)
+    except (binascii.Error, ValueError):
+        try:
+            data = base64.b64decode(b64 + "=" * (-len(b64) % 4), validate=True)
+        except (binascii.Error, ValueError):
+            raise VKCaptchaSolverError(op="slider picture: not base64") from None
+    try:
+        img = Image.open(io.BytesIO(data))
+        w, h = img.size
+        if w <= 0 or h <= 0 or w * h > MAX_SLIDER_PIXELS:
+            raise VKCaptchaSolverError(op="slider picture: bad picture size")
+        return img.convert("RGB")
+    except VKCaptchaSolverError:
+        raise
+    except Exception as e:  # PIL raises OSError, ValueError, SyntaxError...
+        raise VKCaptchaSolverError(op="slider picture", cause=e) from None
+
+
+def solve_slider(content: Dict[str, Any]) -> List[int]:
+    """The answer of a slider captcha. VK sends a picture cut into a 5x5 grid
+    and scrambled, and a list of tile swaps (its first number is not a swap).
+    The slider at position k applies the first k swaps. The answer is the swaps
+    up to the position whose picture has the smoothest seams between tiles. No
+    picture or no steps answer with no swaps."""
+    return SliderCaptchaSolver().solve(content)["selectedSwaps"]
+
 
 class SliderCaptchaSolver:
     DEFAULT_TILE_COUNT = 5
@@ -21,15 +61,16 @@ class SliderCaptchaSolver:
         # Steps for processing: ignore first step as per TS code
         steps_for_processing = raw_steps[1:] if len(raw_steps) > 1 else []
 
-        image_data = base64.b64decode(base64_image)
-        original_image = Image.open(io.BytesIO(image_data)).convert('RGB')
+        original_image = decode_picture(base64_image)
+        if original_image.size[0] < self.DEFAULT_TILE_COUNT or original_image.size[1] < self.DEFAULT_TILE_COUNT:
+            raise VKCaptchaSolverError(op="slider picture: smaller than the tile grid")
 
         best_step, best_swaps = self.find_optimal_step_count(
             original_image,
             steps_for_processing,
             self.DEFAULT_MAX_STEPS,
             self.DEFAULT_TILE_COUNT,
-            content['extension']
+            content.get('extension', '')
         )
 
         return {
@@ -39,10 +80,10 @@ class SliderCaptchaSolver:
 
     def compute_tile_layout(self, image_width: int, image_height: int, tile_count: int) -> ITileInfo:
         vertical_lines = [
-            round((i * image_width) / tile_count) for i in range(tile_count + 1)
+            int(go_round((i * image_width) / tile_count)) for i in range(tile_count + 1)
         ]
         horizontal_lines = [
-            round((i * image_height) / tile_count) for i in range(tile_count + 1)
+            int(go_round((i * image_height) / tile_count)) for i in range(tile_count + 1)
         ]
 
         tiles: List[ITile] = []
@@ -197,7 +238,7 @@ class SliderCaptchaSolver:
             if score < best_score:
                 best_score = score
                 best_step = step + 1
-                best_swaps = swap_sequence[:(step + 1) * 2]
+                best_swaps = list(swap_sequence[:(step + 1) * 2])
 
         return best_step, best_swaps
 

@@ -2,10 +2,31 @@ from typing import TypedDict, List, Optional, Union, Dict, Any, Literal
 
 
 class IApiOptions(TypedDict, total=False):
+    """Options of a CaptchaSolver; every key is optional."""
+
+    #: API version of the old captcha page's calls (default 5.199).
     version: str
+    #: API base of the old captcha page's calls (default https://api.vk.ru).
     baseUrl: str
+    #: Added to every request; a User-Agent here is ignored (see userAgent).
     headers: Dict[str, str]
+    #: Go with every request, besides the remixmdevice cookie.
     cookies: Dict[str, str]
+    #: The User-Agent of every request; default the browser profile's, which
+    #: also sends the profile's client hints.
+    userAgent: str
+    #: The proxy of a solving that names none (http, https, socks5, socks5h).
+    proxy: str
+    #: Seconds a whole solving may take (default 60).
+    timeout: float
+    #: Seconds one try at loading the captcha page may take (default 10; the
+    #: page gets two tries).
+    pageTimeout: float
+    #: Seconds one request may take (default 30).
+    requestTimeout: float
+    #: IANA time zone the browser claims (default: VK_CAPTCHA_TIMEZONE, TZ
+    #: when it names a zone, else Europe/Moscow).
+    timezone: str
 
 
 class IApiError(TypedDict, total=False):

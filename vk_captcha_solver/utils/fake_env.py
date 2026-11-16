@@ -1,10 +1,7 @@
 import json
-import os
 import random
 import re
-import time
-from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..types import IFakeBrowserEnvironment
 from .number import get_random_int
@@ -56,26 +53,12 @@ def _components_to_canonical_string(components: Dict[str, Dict[str, Any]]) -> st
     return "|".join(parts)
 
 
-def _local_timezone_name() -> str:
-    """IANA-имя локальной таймзоны (аналог Intl...resolvedOptions().timeZone)."""
-    tz = os.environ.get("TZ")
-    if tz and "/" in tz:
-        return tz.lstrip(":")
-    try:
-        target = os.path.realpath("/etc/localtime")
-        if "zoneinfo/" in target:
-            return target.split("zoneinfo/", 1)[1]
-    except OSError:
-        pass
-    return "Europe/Moscow"
+def _timezone_pair():
+    """The time zone and its offset the browser claims: one consistent pair
+    (profile.resolve_timezone), as on the BFF page."""
+    from ..profile import resolve_timezone
 
-
-def _timezone_offset_minutes() -> int:
-    """Аналог Date.prototype.getTimezoneOffset() (минуты, UTC - local)."""
-    offset = datetime.now().astimezone().utcoffset()
-    if offset is None:
-        return time.timezone // 60
-    return -int(offset.total_seconds() // 60)
+    return resolve_timezone(None)
 
 
 def _random_hash(length: int = 16) -> str:
@@ -119,7 +102,13 @@ def generate_fake_desktop_environment() -> IFakeBrowserEnvironment:
     }
 
 
-def generate_fake_fingerprint_from_environment(env: IFakeBrowserEnvironment) -> str:
+def generate_fake_fingerprint_from_environment(
+    env: IFakeBrowserEnvironment, timezone: Optional[Tuple[str, int]] = None
+) -> str:
+    """The browser_fp of env: the fingerprintjs hash of made-up browser
+    components that agree with env. timezone is (IANA name, offset minutes);
+    None takes the solver's default (profile.resolve_timezone)."""
+    tz_name, tz_offset = _timezone_pair() if timezone is None else timezone
     platform = "MacIntel" if env["hardwareConcurrency"] >= 8 else "Win32"
     pixel_depth = [24, 32][get_random_int(0, 1)]
     user_agent = (
@@ -146,8 +135,8 @@ def generate_fake_fingerprint_from_environment(env: IFakeBrowserEnvironment) -> 
             "value": [env["screenAvailWidth"], env["screenAvailHeight"]],
             "duration": 0,
         },
-        "timezone": {"value": _local_timezone_name(), "duration": get_random_int(1, 3)},
-        "timezoneOffset": {"value": _timezone_offset_minutes(), "duration": 0},
+        "timezone": {"value": tz_name, "duration": get_random_int(1, 3)},
+        "timezoneOffset": {"value": tz_offset, "duration": 0},
         "sessionStorage": {"value": _random_bool(), "duration": 0},
         "localStorage": {"value": _random_bool(), "duration": 0},
         "indexedDB": {"value": _random_bool(), "duration": 0},

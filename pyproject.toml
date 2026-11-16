@@ -1,7 +1,7 @@
 [project]
 name = "vk-captcha-solver-py"
-version = "0.1.0"
-description = "VK Captcha Solver ported to Python"
+version = "0.2.0"
+description = "Solver of the VK ID captcha (\"Я не робот\"): the BFF page with proof of work v2 and the old page"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -13,8 +13,30 @@ dependencies = [
     "aiohttp-socks>=0.10.2",
 ]
 
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["vk_captcha_solver*"]
+
+[tool.setuptools.package-data]
+vk_captcha_solver = ["profiles/*.json"]
+
 [tool.uv.sources]
-vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "ae417d75b3a089d4ad69c1860eeb0ffcee0f6888" }
+vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "93d4e7f00f105eb8a3a92466060a49e7f504de36" }
 
 [dependency-groups]
-dev = ["beautifulsoup4>=4.14.2", "httpx>=0.28.1", "notebook>=7.5.0"]
+dev = [
+    "beautifulsoup4>=4.14.2",
+    "httpx>=0.28.1",
+    "notebook>=7.5.0",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "trustme>=1.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
