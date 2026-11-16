@@ -24,7 +24,7 @@ include = ["vk_captcha_solver*"]
 vk_captcha_solver = ["profiles/*.json"]
 
 [tool.uv.sources]
-vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "93d4e7f00f105eb8a3a92466060a49e7f504de36" }
+vkbottle = { git = "https://github.com/50Bytes-dev/vkbottle.git", rev = "295becbf1ec9cda71d33a3dc2bf2bcd78ecd9bf0" }
 
 [dependency-groups]
 dev = [
